@@ -56,15 +56,23 @@ app.post("/hk/:worker/action", (req, res) => {
     _state.rooms[room].status = "czyste";
     _state.rooms[room].doneAt = now;
     if (extra && typeof extra === "object") _state.rooms[room].report = extra;
+  } else if (action === "skip") {
+    _state.rooms[room].status = "pominięte";
+    _state.rooms[room].doneAt = now;
   }
   res.json({ ok: true });
 });
 
-// ─── Strona mobilna dla pokojówki ────────────────────────────────────────────
+// ─── Strony mobilne ──────────────────────────────────────────────────────────
 
 app.get("/hk/:worker", (req, res) => {
   const w = decodeURIComponent(req.params.worker);
   res.send(mobilePage(w));
+});
+
+app.get("/hkpm/:worker", (req, res) => {
+  const w = decodeURIComponent(req.params.worker);
+  res.send(mobilePagePM(w));
 });
 
 // Strona główna — info
@@ -271,6 +279,96 @@ function mobilePage(workerName) {
   + '    document.getElementById("sync").textContent=new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});\n'
   + '    var myRooms=(s.assignments[W]||[]).map(function(no){return Object.assign({no:no},s.rooms[no]||{status:"W",vacated:false});});\n'
   + '    myRooms.forEach(function(r){if(r.vacated&&r.status==="W"&&!lastVacated[r.no]){showToast("Pok\u00f3j "+r.no+" jest pusty!");lastVacated[r.no]=true;}});\n'
+  + '    render(myRooms);\n'
+  + '  }).catch(function(){dot.className="dot off";});\n'
+  + '}\n'
+  + 'document.getElementById("dateLabel").textContent=new Date().toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"});\n'
+  + 'poll();\n'
+  + 'setInterval(poll,3000);\n'
+  + '</script>\n'
+  + '</body></html>';
+}
+
+function mobilePagePM(workerName) {
+  var wJson = JSON.stringify(workerName);
+  return '<!DOCTYPE html>\n'
+  + '<html lang="pl"><head>\n'
+  + '<meta charset="UTF-8">\n'
+  + '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">\n'
+  + '<meta name="mobile-web-app-capable" content="yes">\n'
+  + '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+  + '<title>PM \u2022 ' + workerName + '</title>\n'
+  + '<style>\n'
+  + '*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}\n'
+  + 'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;overscroll-behavior:none}\n'
+  + '.hdr{background:#161b22;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #30363d;position:sticky;top:0;z-index:10}\n'
+  + '.dot{width:9px;height:9px;border-radius:50%;background:#34d399;flex-shrink:0}\n'
+  + '.dot.off{background:#f87171}\n'
+  + '.hdr-name{font-size:17px;font-weight:800}\n'
+  + '.hdr-sub{font-size:11px;color:#8b949e;margin-top:1px}\n'
+  + '.rooms{padding:12px;display:flex;flex-direction:column;gap:10px}\n'
+  + '.card{background:#161b22;border:2px solid #30363d;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px}\n'
+  + '.card.done{border-color:#34d399;background:#0d1a14}\n'
+  + '.card.skipped{border-color:#f59e0b;background:#1a1600}\n'
+  + '.rno{font-size:44px;font-weight:900;letter-spacing:-2px;line-height:1;min-width:70px}\n'
+  + '.rno.waiting{color:#3a3f48}.rno.done{color:#34d399}.rno.skipped{color:#f59e0b}\n'
+  + '.card-mid{flex:1;display:flex;flex-direction:column;gap:5px}\n'
+  + '.type-badge{display:inline-block;font-size:11px;font-weight:900;padding:3px 8px;border-radius:6px;background:rgba(99,102,241,.25);color:#a5b4fc;border:1px solid rgba(99,102,241,.4);letter-spacing:1px;width:fit-content}\n'
+  + '.card-state{font-size:12px;font-weight:700;color:#484f58}\n'
+  + '.card-state.done{color:#34d399}.card-state.skipped{color:#f59e0b}\n'
+  + '.btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}\n'
+  + '.btn-done{padding:10px 16px;border-radius:9px;border:none;font-size:13px;font-weight:800;cursor:pointer;background:#059669;color:#fff;white-space:nowrap}\n'
+  + '.btn-skip{padding:10px 16px;border-radius:9px;border:1.5px solid rgba(245,158,11,.4);font-size:13px;font-weight:800;cursor:pointer;background:#1e2430;color:#f59e0b;white-space:nowrap}\n'
+  + '.btn-done:active,.btn-skip:active{opacity:.7}\n'
+  + '.sync{position:fixed;top:10px;right:12px;font-size:10px;color:#484f58;z-index:20}\n'
+  + '.empty{text-align:center;padding:60px 24px;color:#484f58}\n'
+  + '.empty-ic{font-size:52px;margin-bottom:12px}\n'
+  + '</style></head>\n'
+  + '<body>\n'
+  + '<div class="hdr"><div class="dot" id="dot"></div><div><div class="hdr-name">' + workerName + '</div><div class="hdr-sub" id="dateLabel"></div></div></div>\n'
+  + '<div id="sync" class="sync"></div>\n'
+  + '<div class="rooms" id="rooms"><div class="empty"><div class="empty-ic">&#8987;</div><p>Pobieranie danych...</p></div></div>\n'
+  + '<script>\n'
+  + 'var W=' + wJson + ';\n'
+  + 'function render(rooms){\n'
+  + '  var c=document.getElementById("rooms");\n'
+  + '  if(!rooms||!rooms.length){c.innerHTML=\'<div class="empty"><div class="empty-ic">&#10003;</div><p>Brak pok\u00f3i</p></div>\';return;}\n'
+  + '  var html="";\n'
+  + '  for(var i=0;i<rooms.length;i++){\n'
+  + '    var r=rooms[i];\n'
+  + '    var done=r.status==="czyste";\n'
+  + '    var skipped=r.status==="pomini\u0119te";\n'
+  + '    var pgz=(r.type||"").toUpperCase()==="PGZ";\n'
+  + '    var cls="card"+(done?" done":skipped?" skipped":"");\n'
+  + '    var rnoCls="rno"+(done?" done":skipped?" skipped":" waiting");\n'
+  + '    var stateTxt=done?"\u2713 Zrobione":skipped?"Go\u015bcie nie chcieli":"\u2022 Czeka";\n'
+  + '    var stateCls="card-state"+(done?" done":skipped?" skipped":"");\n'
+  + '    html+="<div class=\\""+cls+"\\">";\n'
+  + '    html+="<div class=\\""+rnoCls+"\\">"+r.no+"</div>";\n'
+  + '    html+="<div class=\\"card-mid\\"><span class=\\"type-badge\\">"+(r.type||"")+"</span><span class=\\""+stateCls+"\\">"+stateTxt+"</span></div>";\n'
+  + '    if(!done&&!skipped){\n'
+  + '      html+="<div class=\\"btns\\">";\n'
+  + '      if(pgz){\n'
+  + '        html+="<button class=\\"btn-done\\" onclick=\\"act(\'done\',\'"+r.no+"\')\\">\u2713 Sprz\u0105tane</button>";\n'
+  + '        html+="<button class=\\"btn-skip\\" onclick=\\"act(\'skip\',\'"+r.no+"\')\\">\u2715 Nie chcieli</button>";\n'
+  + '      } else {\n'
+  + '        html+="<button class=\\"btn-done\\" onclick=\\"act(\'done\',\'"+r.no+"\')\\">\u2713 Zrobione</button>";\n'
+  + '      }\n'
+  + '      html+="</div>";\n'
+  + '    }\n'
+  + '    html+="</div>";\n'
+  + '  }\n'
+  + '  c.innerHTML=html;\n'
+  + '}\n'
+  + 'function act(action,room){\n'
+  + '  fetch("/hk/"+encodeURIComponent(W)+"/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:action,room:room})}).then(function(){poll();}).catch(function(){});\n'
+  + '}\n'
+  + 'function poll(){\n'
+  + '  var dot=document.getElementById("dot");\n'
+  + '  fetch("/api/state").then(function(r){return r.json();}).then(function(s){\n'
+  + '    dot.className="dot";\n'
+  + '    document.getElementById("sync").textContent=new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});\n'
+  + '    var myRooms=(s.assignments[W]||[]).map(function(no){return Object.assign({no:no},s.rooms[no]||{status:"W",vacated:false});});\n'
   + '    render(myRooms);\n'
   + '  }).catch(function(){dot.className="dot off";});\n'
   + '}\n'
