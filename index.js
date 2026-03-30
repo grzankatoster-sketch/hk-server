@@ -12,7 +12,7 @@ const SECRET = process.env.HK_SECRET || "conrad2026";
 const PORT   = process.env.PORT || 3000;
 
 // Stan w pamięci
-let _state = { date: null, assignments: {}, rooms: {} };
+let _state = { date: null, assignments: {}, pmAssignments: {}, rooms: {} };
 
 // ─── API dla Electron (recepcja) ─────────────────────────────────────────────
 
@@ -313,7 +313,12 @@ function mobilePagePM(workerName) {
   + '.rno{font-size:44px;font-weight:900;letter-spacing:-2px;line-height:1;min-width:70px}\n'
   + '.rno.waiting{color:#3a3f48}.rno.done{color:#34d399}.rno.skipped{color:#f59e0b}\n'
   + '.card-mid{flex:1;display:flex;flex-direction:column;gap:5px}\n'
-  + '.type-badge{display:inline-block;font-size:11px;font-weight:900;padding:3px 8px;border-radius:6px;background:rgba(99,102,241,.25);color:#a5b4fc;border:1px solid rgba(99,102,241,.4);letter-spacing:1px;width:fit-content}\n'
+  + '.type-badge{display:inline-block;font-size:13px;font-weight:900;padding:4px 10px;border-radius:8px;letter-spacing:1px;width:fit-content}\n'
+  + '.type-badge.pgz{background:rgba(245,158,11,.2);color:#f59e0b;border:1.5px solid rgba(245,158,11,.4)}\n'
+  + '.type-badge.pg{background:rgba(96,165,250,.2);color:#60a5fa;border:1.5px solid rgba(96,165,250,.4)}\n'
+  + '.type-badge.br{background:rgba(167,139,250,.2);color:#a78bfa;border:1.5px solid rgba(167,139,250,.4)}\n'
+  + '.type-badge.zs{background:rgba(52,211,153,.2);color:#34d399;border:1.5px solid rgba(52,211,153,.4)}\n'
+  + '.type-badge.other{background:rgba(99,102,241,.2);color:#a5b4fc;border:1px solid rgba(99,102,241,.3)}\n'
   + '.card-state{font-size:12px;font-weight:700;color:#484f58}\n'
   + '.card-state.done{color:#34d399}.card-state.skipped{color:#f59e0b}\n'
   + '.btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}\n'
@@ -338,14 +343,16 @@ function mobilePagePM(workerName) {
   + '    var r=rooms[i];\n'
   + '    var done=r.status==="czyste";\n'
   + '    var skipped=r.status==="pomini\u0119te";\n'
-  + '    var pgz=(r.type||"").toUpperCase()==="PGZ";\n'
+  + '    var t=(r.type||"").toUpperCase();\n'
+  + '    var pgz=t==="PGZ";\n'
+  + '    var badgeCls="type-badge "+(t==="PGZ"?"pgz":t==="PG"?"pg":t==="BR"?"br":t==="ZS"?"zs":"other");\n'
   + '    var cls="card"+(done?" done":skipped?" skipped":"");\n'
   + '    var rnoCls="rno"+(done?" done":skipped?" skipped":" waiting");\n'
-  + '    var stateTxt=done?"\u2713 Zrobione":skipped?"Go\u015bcie nie chcieli":"\u2022 Czeka";\n'
+  + '    var stateTxt=done?"\u2713 Zrobione":skipped?"Go\u015bcie nie chcieli":"";\n'
   + '    var stateCls="card-state"+(done?" done":skipped?" skipped":"");\n'
   + '    html+="<div class=\\""+cls+"\\">";\n'
   + '    html+="<div class=\\""+rnoCls+"\\">"+r.no+"</div>";\n'
-  + '    html+="<div class=\\"card-mid\\"><span class=\\"type-badge\\">"+(r.type||"")+"</span><span class=\\""+stateCls+"\\">"+stateTxt+"</span></div>";\n'
+  + '    html+="<div class=\\"card-mid\\"><span class=\\""+badgeCls+"\\">"+t+"</span>"+(stateTxt?"<span class=\\""+stateCls+"\\">"+stateTxt+"</span>":"")+"</div>";\n'
   + '    if(!done&&!skipped){\n'
   + '      html+="<div class=\\"btns\\">";\n'
   + '      if(pgz){\n'
@@ -368,7 +375,7 @@ function mobilePagePM(workerName) {
   + '  fetch("/api/state").then(function(r){return r.json();}).then(function(s){\n'
   + '    dot.className="dot";\n'
   + '    document.getElementById("sync").textContent=new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});\n'
-  + '    var myRooms=(s.assignments[W]||[]).map(function(no){return Object.assign({no:no},s.rooms[no]||{status:"W",vacated:false});});\n'
+  + '    var myRooms=(s.pmAssignments[W]||[]).map(function(no){return Object.assign({no:no},s.rooms[no]||{status:"W",vacated:false});});\n'
   + '    render(myRooms);\n'
   + '  }).catch(function(){dot.className="dot off";});\n'
   + '}\n'
